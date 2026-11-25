@@ -1,120 +1,102 @@
-# Monday, Reviewed in One Line — make.fun bounty
-# u-zeroxfive-monday-reviewed-in-one-line-e55de3c1
-#
-# The program writes one review of the entrant's own Monday, a single
-# line under 200 characters and nothing else, to /output/entry.txt.
-# Candidates were drafted against the judge's brief, in order of weight:
-#   1. is a one-line review of the entrant's own Monday, not a joke
-#      about something else
-#   2. gets the bigger laugh, the line a reader would laugh at rather
-#      than merely nod at
-#   3. names a concrete detail of the Monday — a meeting, a commute,
-#      an inbox — over generic tiredness
-#   4. lands the joke inside the line with no wasted words, so the turn
-#      arrives before the reader gives up
-#   5. is the line a reader would repeat to a coworker the next morning
-# Each candidate carries a hand-scored craft score (0-10 per criterion,
-# summed below); selection is deterministic: highest score wins, ties go
-# to the shorter text. The output is byte-identical on every run.
+"""Monday, reviewed in a single line.
 
-CANDIDATES = [
-    # score: on-subject 10, laugh 10, concrete 10, tight 10,
-    #   retellable 9 = 49. The 9 a.m. stand-up that sits down for two
-    #   hours is the most recognisable Monday there is; "the only thing
-    #   that stood up was my blood pressure" turns the meeting's own
-    #   name against it, and the punch lands on the last word.
-    ("My Monday earned one star: the 9 a.m. stand-up sat down for two "
-     "hours, and the only thing that stood up was my blood pressure.",
-     49),
-    # score: on-subject 10, laugh 9, concrete 9, tight 9,
-    #   retellable 9 = 46. The stand-up nobody stands at, and the only
-    #   action item is the same meeting again next week — the Monday
-    #   that reproduces itself.
-    ("I rated my Monday one star \u2014 the stand-up ran 90 minutes, "
-     "nobody stood, and the only action item was the same meeting, "
-     "again, next week.",
-     46),
-    # score: on-subject 10, laugh 9, concrete 9, tight 9,
-    #   retellable 8 = 45. 47 unread before 9 a.m. is concrete; the
-    #   meeting about the emails outnumbering the emails is the turn.
-    ("Monday, one star: my inbox hit 47 unread before 9 a.m., and the "
-     "meeting to discuss the emails outnumbered the emails.",
-     45),
-    # score: on-subject 10, laugh 8, concrete 9, tight 9,
-    #   retellable 8 = 44. The meeting about the meeting, with HR
-    #   surveying the wreckage — three concrete Monday details in one
-    #   line.
-    ("Monday review: my laptop updated for an hour, my boss booked a "
-     "meeting about the meeting, and HR sent a survey asking how it "
-     "went.",
-     44),
-    # score: on-subject 10, laugh 8, concrete 8, tight 9,
-    #   retellable 8 = 43. The commute on time, the coffee cold, and a
-    #   "quick sync" that outlasts the weekend.
-    ("I reviewed my Monday: the commute was on time, the coffee was "
-     "cold, and the 'quick sync' lasted longer than my weekend.",
-     43),
-    # score: on-subject 10, laugh 8, concrete 8, tight 8,
-    #   retellable 8 = 42. Alarm, train and calendar all giving up in
-    #   sequence; the calendar pretending is the freshest beat.
-    ("My Monday: the alarm gave up, the train gave up, and by 10 a.m. "
-     "my calendar had given up pretending the meetings were meetings.",
-     42),
-]
+Entry for the make.fun bounty "Monday, Reviewed in One Line"
+(slug u-zeroxfive-monday-reviewed-in-one-line-e55de3c1). The brief asks
+for one review of the entrant's own Monday, under 200 characters, and
+nothing else. This script keeps six hand-written drafts, marks each one
+on five counts, keeps the best of the six, and writes it to
+/output/entry.txt. The drafts never change at run time and the arithmetic
+never changes either, so the same draft wins on every run and the file
+comes out byte-identical each time.
+"""
 
-# The gate requires 1-200 characters of non-whitespace UTF-8 text, and
-# the brief asks for under 200 characters, so every candidate is kept
-# below 200.
-MAX_CHARS = 199
+from hashlib import sha256
+from pathlib import Path
+
+DESTINATION = Path("/output/entry.txt")
+LIMIT = 199
+FINGERPRINT = "f00cb4fe04c49d677c40849e35a0a768" "9f84fe1707d4007376fa06d605870d08"
+
+# Marks run in this order: on-brief, laugh, specific, lean, repeatable.
+# Each draft is a fixed string plus its five marks; the total decides,
+# and a tie goes to the shorter draft.
+DRAFTS = [
+    # 10, 10, 10, 10, 9 = 49. A one-star review of a stand-up that never
+    # stands: the meeting lends its own name to the joke, and the payoff
+    # word is the last word in the line.
+    ("My Monday earned one star: the 9 a.m. stand-up sat down for two hours, and the only thing that stood up was my blood pressure.", (10, 10, 10, 10, 9)),
+    # 10, 9, 9, 9, 9 = 46. Ninety minutes, nobody on their feet, and the
+    # only thing the meeting produces is itself again next week.
+    ("I rated my Monday one star \u2014 the stand-up ran 90 minutes, nobody stood, and the only action item was the same meeting, again, next week.", (10, 9, 9, 9, 9)),
+    # 10, 9, 9, 9, 8 = 45. Forty-seven unread before nine, then a meeting
+    # about the emails that outnumbers the emails themselves.
+    ("Monday, one star: my inbox hit 47 unread before 9 a.m., and the meeting to discuss the emails outnumbered the emails.", (10, 9, 9, 9, 8)),
+    # 10, 8, 9, 9, 8 = 44. An hour of updates, a meeting about the
+    # meeting, and HR asking afterwards how it went.
+    ("Monday review: my laptop updated for an hour, my boss booked a meeting about the meeting, and HR sent a survey asking how it went.", (10, 8, 9, 9, 8)),
+    # 10, 8, 8, 9, 8 = 43. On-time commute, cold coffee, and a quick sync
+    # that runs longer than the weekend it follows.
+    ("I reviewed my Monday: the commute was on time, the coffee was cold, and the 'quick sync' lasted longer than my weekend.", (10, 8, 8, 9, 8)),
+    # 10, 8, 8, 8, 8 = 42. Alarm, train and calendar surrendering in
+    # turn, the calendar last.
+    ("My Monday: the alarm gave up, the train gave up, and by 10 a.m. my calendar had given up pretending the meetings were meetings.", (10, 8, 8, 8, 8)),]
 
 
-def pick(candidates):
-    best = None
-    for text, score in candidates:
-        assert 1 <= len(text) <= MAX_CHARS, \
-            f"candidate over gate: {len(text)} chars"
-        assert text.strip(), "candidate is blank"
-        assert "\n" not in text, "candidate must be one line"
-        key = (score, -len(text))  # highest score, then shortest
-        if best is None or key > best[0]:
-            best = (key, text)
-    return best[1]
+def vet(text):
+    """Refuse anything the gate would refuse, before it is written."""
+    if not isinstance(text, str):
+        raise TypeError("draft is not text")
+    if "\n" in text or "\r" in text:
+        raise ValueError("draft must stay on a single line")
+    if not text.strip():
+        raise ValueError("draft is blank")
+    if len(text) > LIMIT:
+        raise ValueError(
+            f"draft is {len(text)} characters, past the {LIMIT} cap"
+        )
+    text.encode("utf-8")
+    return text
 
 
-def main():
-    line = pick(CANDIDATES)
-    import hashlib
-    import os
-    # SHA-256 self-check: the chosen line must hash to the value recorded
-    # when the candidates were drafted, so a silent edit to the winning
-    # text (or to the file on disk) is caught instead of shipped.
-    expected_sha256 = (
-        "f00cb4fe04c49d677c40849e35a0a7689f84fe1707d4007376fa06d605870d08"
-    )
-    actual_sha256 = hashlib.sha256(line.encode("utf-8")).hexdigest()
-    assert actual_sha256 == expected_sha256, \
-        f"chosen line hash changed: {actual_sha256}"
-    os.makedirs("/output", exist_ok=True)
-    with open("/output/entry.txt", "w", encoding="utf-8") as f:
-        f.write(line)
-    # Verify what was actually written: the gate reads this file, not stdout.
-    # The scorer collects outputs as another user, so the file must be
-    # readable by everyone (mode 0644), not just by the writer.
-    os.chmod("/output/entry.txt", 0o644)
-    with open("/output/entry.txt", encoding="utf-8") as f:
-        written = f.read()
-    assert written == line, "entry.txt differs from the chosen line"
-    assert 1 <= len(written.strip()) <= MAX_CHARS, \
-        "entry.txt outside the gate"
-    assert written.strip(), "entry.txt is blank"
-    assert "\n" not in written.strip(), "entry.txt must be one line"
-    # Re-hash what is on disk: the file the gate reads must match the
-    # chosen line byte for byte, not just in length.
-    written_sha256 = hashlib.sha256(written.encode("utf-8")).hexdigest()
-    assert written_sha256 == expected_sha256, \
-        f"entry.txt hash changed on disk: {written_sha256}"
-    print(line)
+def total(draft):
+    """Add a draft's five marks into its single deciding number."""
+    return sum(draft[1])
 
 
-if __name__ == "__main__":
-    main()
+def choose(drafts):
+    """Best total wins; the shorter draft wins a tie."""
+    ranked = sorted(drafts, key=lambda draft: (total(draft), -len(draft[0])), reverse=True)
+    return ranked[0][0]
+
+
+def fingerprint(text):
+    """Hex digest of a line, for the tamper check below."""
+    return sha256(text.encode("utf-8")).hexdigest()
+
+
+def deliver(text):
+    """Write the winning line, then prove the disk holds that line."""
+    vet(text)
+    if fingerprint(text) != FINGERPRINT:
+        raise ValueError(f"winner fingerprint mismatch: {fingerprint(text)}")
+    DESTINATION.parent.mkdir(parents=True, exist_ok=True)
+    DESTINATION.write_text(text, encoding="utf-8")
+    DESTINATION.chmod(0o644)
+    back = DESTINATION.read_text(encoding="utf-8")
+    if back != text:
+        raise ValueError("entry.txt on disk is not the chosen line")
+    if fingerprint(back) != FINGERPRINT:
+        raise ValueError("entry.txt fingerprint drifted after writing")
+    return back
+
+
+def run():
+    """Vet every draft, pick the winner, write it, print it."""
+    for draft in DRAFTS:
+        vet(draft[0])
+    chosen = choose(DRAFTS)
+    deliver(chosen)
+    print(chosen)
+
+
+if __name__ == "__main__": run()
